@@ -47,11 +47,9 @@ def generate_redis_formated_array(key_or_value, cli_message):
     encoded_message_start = f"{ARRAY_START}{total_length}{SPACING}{BULK_STR_START}{command_length}{SPACING}{cli_message}{SPACING}"
 
     # Creates and returns redis formatted array to send to Redis server
-    client_encode = encoded_message_start
     for key, value in input_to_length.items():
-        client_encode += f"{BULK_STR_START}{value}{SPACING}{key}{SPACING}"
-    redis_format_client_message = client_encode
-    return redis_format_client_message
+        encoded_message_start += f"{BULK_STR_START}{value}{SPACING}{key}{SPACING}"
+    return encoded_message_start
 
 
 def server_connect_and_communicate(redis_formatted_cli_message):
