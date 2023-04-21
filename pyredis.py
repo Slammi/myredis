@@ -7,7 +7,6 @@ SPACING = "\r\n"
 ARRAY_START = "*"
 BULK_STR_START = "$"
 BUFFER_SIZE = 1024
-# this line is here to remove before committing
 
 
 def main():
