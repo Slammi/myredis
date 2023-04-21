@@ -34,7 +34,7 @@ def main():
         args.key_or_value, args.message
     )
 
-    # Opens connection with server and facilities send/recieve of client message/server response.
+    # Opens connection with server and facilitates send/receive of client message/server response.
     server_connect_and_communicate(redis_format_client_message)
 
 
