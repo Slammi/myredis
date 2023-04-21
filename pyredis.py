@@ -42,9 +42,8 @@ def generate_redis_formated_array(key_or_value, cli_message):
     # Creates dictionary that stores strings of user input with their character length
     # (also a string) for generation of bulk strings and array to be passed to Redis server.
     input_to_length = {item: len(item) for item in key_or_value}
-    key_or_value_num = len(key_or_value)
     command_length = len(cli_message)
-    total_length = 1 + key_or_value_num
+    total_length = 1 + len(key_or_value)
     encoded_message_start = f"{ARRAY_START}{total_length}{SPACING}{BULK_STR_START}{command_length}{SPACING}{cli_message}{SPACING}"
 
     # Creates and returns redis formatted array to send to Redis server
