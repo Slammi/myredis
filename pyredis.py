@@ -1,6 +1,9 @@
 import argparse
 import socket
 
+
+from utils import server_response_decode
+
 HOST = "127.0.0.1"  # Local host IP
 PORT = 6379  # Current port used by the Redis server
 SPACING = "\r\n"
@@ -52,6 +55,7 @@ def generate_redis_formatted_array(key_or_value, cli_message):
     # Creates and returns redis formatted array to send to Redis server
     for key, value in input_to_length.items():
         encoded_message_start += f"{BULK_STR_START}{value}{SPACING}{key}{SPACING}"
+    # print(repr(encoded_message_start))
     return encoded_message_start
 
 
@@ -62,7 +66,8 @@ def server_connect_and_communicate(redis_formatted_cli_message):
         s.connect((HOST, PORT))
         s.sendall(redis_formatted_cli_message.encode())
         response = s.recv(BUFFER_SIZE).decode()
-        print(f"Received {repr(response)}")
+        server_response, _ = server_response_decode(response)
+        print(server_response)
 
 
 if __name__ == "__main__":
