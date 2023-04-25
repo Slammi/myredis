@@ -55,7 +55,6 @@ def generate_redis_formatted_array(key_or_value, cli_message):
     # Creates and returns redis formatted array to send to Redis server
     for key, value in input_to_length.items():
         encoded_message_start += f"{BULK_STR_START}{value}{SPACING}{key}{SPACING}"
-    # print(repr(encoded_message_start))
     return encoded_message_start
 
 
