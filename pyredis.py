@@ -1,6 +1,9 @@
 import argparse
 import socket
 
+
+from utils import server_response_decode
+
 HOST = "127.0.0.1"  # Local host IP
 PORT = 6379  # Current port used by the Redis server
 SPACING = "\r\n"
@@ -62,7 +65,8 @@ def server_connect_and_communicate(redis_formatted_cli_message):
         s.connect((HOST, PORT))
         s.sendall(redis_formatted_cli_message.encode())
         response = s.recv(BUFFER_SIZE).decode()
-        print(f"Received {repr(response)}")
+        server_response, _ = server_response_decode(response)
+        print(server_response)
 
 
 if __name__ == "__main__":
