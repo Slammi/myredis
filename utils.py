@@ -6,7 +6,7 @@ def server_response_decode(message):
     # message_parts[0] = 1st section w/o 1st character and the message_parts[1] = the entire rest of the message.
     message_parts = message[1:].split(SEPARATOR, maxsplit=1)
 
-    # Array if loop start
+    # Array if statement start
     if message[0] == "*":
         array_len = int(message_parts[0])
         array_list = []
@@ -34,13 +34,13 @@ def server_response_decode(message):
 
     elif message[0] == "$":  # remember nil responses are sent as $-1
         print("bulk string")
-        if message_parts[0] == "-1":
+        b_string_len = int(message_parts[0])
+        if b_string_len == -1:
             value = "(nil)"
             remainder = message_parts[1]
         else:
-            b_string_len = int(message_parts[0])
             value = message_parts[1][:b_string_len]
-            remainder = message_parts[1][b_string_len + 1 :]
+            remainder = message_parts[1][b_string_len + 2 :]
 
     elif message[0] == ":":  # responses should start with '(integer)'
         print("integer")
