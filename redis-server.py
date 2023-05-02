@@ -6,7 +6,7 @@ import argparse
 from utils import server_response_decode, command_handler
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 65429  # Port to listen on (non-privileged ports are > 1023)
+PORT = 6380  # Port to listen on (non-privileged ports are > 1023)
 MY_DICT = {}
 FAKE_RESPONSE_1 = "OK"
 FAKE_RESPONSE_2 = ""
@@ -20,7 +20,7 @@ def parse_args():
         "--port",
         "-p",
         type=int,
-        default=6379,
+        default=PORT,
         help="This is the default port to connect to",
     )
     return parser.parse_args()

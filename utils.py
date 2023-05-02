@@ -61,16 +61,16 @@ def server_response_decode(message):
 
 
 def generate_redis_formatted_array(key_or_value, cli_message):
-    # Creates dictionary that stores strings of user input with their character length
-    # (also a string) for generation of bulk strings and array to be passed to Redis server.
-    input_to_length = {item: len(item) for item in key_or_value}
+    # Generates start of array taking length of list based on number of arguments passed to it.
     command_length = len(cli_message)
     total_length = 1 + len(key_or_value)
     encoded_message_start = f"{ARRAY_START}{total_length}{SEPARATOR}{BULK_STR_START}{command_length}{SEPARATOR}{cli_message}{SEPARATOR}"
 
     # Creates and returns redis formatted array to send to Redis server
-    for key, value in input_to_length.items():
-        encoded_message_start += f"{BULK_STR_START}{value}{SEPARATOR}{key}{SEPARATOR}"
+    for key in key_or_value:
+        encoded_message_start += (
+            f"{BULK_STR_START}{len(key)}{SEPARATOR}{key}{SEPARATOR}"
+        )
     return encoded_message_start
 
 
