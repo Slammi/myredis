@@ -5,7 +5,7 @@ import socket
 from utils import generate_redis_formatted_array, server_response_decode
 
 HOST = "127.0.0.1"  # Local host IP
-PORT = 6380  # Current port used by the Redis server
+PORT = 6380  # Current port used by the server
 
 
 def main():

@@ -2,12 +2,8 @@ SEPARATOR = "\r\n"
 ARRAY_START = "*"
 BULK_STR_START = "$"
 BUFFER_SIZE = 1024
-ARRAY_ERROR_MESSAGE = "Additional input required"
-# GET_TOO_MUCH_INPUT_ERROR = "-ERR unknown command" f"{message[2:]}"
-MY_DICT = {}
 NIL_REPLY = "$-1\r\n"
 OKAY = "+OK\r\n"
-PORT = 65429
 
 import argparse, socket
 
@@ -34,17 +30,14 @@ def server_response_decode(message):
         return array_list, remainder
 
     elif message[0] == "+":
-        # print("simple string")
         value = message_parts[0]
         remainder = message_parts[1]
 
     elif message[0] == "-":
-        # print("error")
         value = f"(error) {message_parts[0]}"
         remainder = message_parts[1]
 
     elif message[0] == BULK_STR_START:  # remember nil responses are sent as $-1
-        # print("bulk string")
         b_string_len = int(message_parts[0])
         if b_string_len == -1:
             value = "(nil)"
@@ -54,7 +47,6 @@ def server_response_decode(message):
             remainder = message_parts[1][b_string_len + 2 :]
 
     elif message[0] == ":":  # responses should start with '(integer)'
-        # print("integer")
         value = f"(integer) {message_parts[0]}"
         remainder = message_parts[1]
     return value, remainder
@@ -126,13 +118,3 @@ def command_handler(message, dict):
                 dict[message[1]] = message[2]
                 return OKAY
     return f"-ERR unknown command '{' '.join(message)}'{SEPARATOR}"
-
-
-# this will likely need to be updated as other message types arise, however given
-# that command_handler already converts most of replies into RESP format this is not needed currently
-# may consider transfering this part into command_handler if other types dont arise.
-def server_response_encode(cmd_hndlr_message):
-    if type(cmd_hndlr_message) == int:
-        return f":{cmd_hndlr_message}\r\n"
-    else:
-        return cmd_hndlr_message

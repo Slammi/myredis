@@ -40,7 +40,6 @@ def listen_and_respond():
             if not data:
                 break
             decoded_response, _ = server_response_decode(data)
-            # str_decoded_response = " ".join(decoded_response)
             # parse command and either retrieve/store data or return error message
             RESP_encoded_response = command_handler(decoded_response, MY_DICT)
             conn.sendall(f"{RESP_encoded_response}".encode())
