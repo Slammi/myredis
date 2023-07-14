@@ -1,4 +1,9 @@
 SEPARATOR = "\r\n"
+ARRAY_START = "*"
+BULK_STR_START = "$"
+SIMPLE_STR_START = "+"
+ERROR_MSG_START = "-"
+INTEGER_MSG_START = ":"
 
 
 def server_response_decode(message):
@@ -7,7 +12,7 @@ def server_response_decode(message):
     message_parts = message[1:].split(SEPARATOR, maxsplit=1)
 
     # Array if statement start
-    if message[0] == "*":
+    if message[0] == ARRAY_START:
         array_len = int(message_parts[0])
         array_list = []
 
@@ -22,18 +27,15 @@ def server_response_decode(message):
             array_list.append(value)
         return array_list, remainder
 
-    elif message[0] == "+":
-        print("simple string")
+    elif message[0] == SIMPLE_STR_START:
         value = message_parts[0]
         remainder = message_parts[1]
 
-    elif message[0] == "-":
-        print("error")
-        value = message_parts[0]
+    elif message[0] == ERROR_MSG_START:
+        value = f"(error) {message_parts[0]}"
         remainder = message_parts[1]
 
-    elif message[0] == "$":  # remember nil responses are sent as $-1
-        print("bulk string")
+    elif message[0] == BULK_STR_START:  # remember nil responses are sent as $-1
         b_string_len = int(message_parts[0])
         if b_string_len == -1:
             value = "(nil)"
@@ -42,8 +44,7 @@ def server_response_decode(message):
             value = message_parts[1][:b_string_len]
             remainder = message_parts[1][b_string_len + 2 :]
 
-    elif message[0] == ":":  # responses should start with '(integer)'
-        print("integer")
-        value = int(message_parts[0])
+    elif message[0] == INTEGER_MSG_START:  # responses should start with '(integer)'
+        value = f"(integer) {message_parts[0]}"
         remainder = message_parts[1]
     return value, remainder
