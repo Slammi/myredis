@@ -1,11 +1,9 @@
 SEPARATOR = "\r\n"
 ARRAY_START = "*"
 BULK_STR_START = "$"
-BUFFER_SIZE = 1024
-NIL_REPLY = "$-1\r\n"
-OKAY = "+OK\r\n"
-
-import argparse, socket
+SIMPLE_STR_START = "+"
+ERROR_MSG_START = "-"
+INTEGER_MSG_START = ":"
 
 
 def server_response_decode(message):
@@ -29,11 +27,11 @@ def server_response_decode(message):
             array_list.append(value)
         return array_list, remainder
 
-    elif message[0] == "+":
+    elif message[0] == SIMPLE_STR_START:
         value = message_parts[0]
         remainder = message_parts[1]
 
-    elif message[0] == "-":
+    elif message[0] == ERROR_MSG_START:
         value = f"(error) {message_parts[0]}"
         remainder = message_parts[1]
 
@@ -46,75 +44,7 @@ def server_response_decode(message):
             value = message_parts[1][:b_string_len]
             remainder = message_parts[1][b_string_len + 2 :]
 
-    elif message[0] == ":":  # responses should start with '(integer)'
+    elif message[0] == INTEGER_MSG_START:  # responses should start with '(integer)'
         value = f"(integer) {message_parts[0]}"
         remainder = message_parts[1]
     return value, remainder
-
-
-def generate_redis_formatted_array(key_or_value, cli_message):
-    # Generates start of array taking length of list based on number of arguments passed to it.
-    command_length = len(cli_message)
-    total_length = 1 + len(key_or_value)
-    encoded_message_start = f"{ARRAY_START}{total_length}{SEPARATOR}{BULK_STR_START}{command_length}{SEPARATOR}{cli_message}{SEPARATOR}"
-
-    # Creates and returns redis formatted array to send to Redis server
-    for key in key_or_value:
-        encoded_message_start += (
-            f"{BULK_STR_START}{len(key)}{SEPARATOR}{key}{SEPARATOR}"
-        )
-    return encoded_message_start
-
-
-def command_handler(message, dict):
-    # generates bulk string, simple string, null reply and integer reply.
-    if type(message) != list:
-        return f"-ERR unkown command {*message,}{SEPARATOR}"
-    if message[0] == "GET":
-        if len(message) > 2:
-            return f"-ERR unkown command {*message[2:],}{SEPARATOR}"
-        elif message[1] not in dict:
-            return NIL_REPLY
-        elif message[1] in dict:
-            value_len = len(dict[message[1]])
-            return f"${value_len}{SEPARATOR}{dict[message[1]]}{SEPARATOR}"
-    if message[0] == "DEL":
-        count = 0
-        del_len = len(message) - 1
-        for i in range(del_len):
-            if message[i + 1] in dict:
-                del dict[message[i + 1]]
-                count += 1
-        return f":{count}{SEPARATOR}"
-    if message[0] == "SET":
-        if len(message) >= 4:
-            if message[3] == "GET":
-                if message[1] in dict:
-                    old_key_len = len(dict[message[1]])
-                    old_key = dict[message[1]]
-                    old_key_BS = f"${old_key_len}{SEPARATOR}{old_key}{SEPARATOR}"
-                    dict.update({message[1]: message[2]})
-                    return old_key_BS
-                else:
-                    dict[message[1]] = message[2]
-                    return NIL_REPLY
-            if message[3] == "NX":
-                if message[1] in dict:
-                    return NIL_REPLY
-                else:
-                    dict[message[1]] = message[2]
-                    return OKAY
-            if message[3] == "XX":
-                if message[1] in dict:
-                    dict.update({message[1]: message[2]})
-                    return OKAY
-                else:
-                    return NIL_REPLY
-        elif len(message) == 3:
-            if message[1] in dict:
-                dict.update({message[1]: message[2]})
-                return OKAY
-            else:
-                dict[message[1]] = message[2]
-                return OKAY
-    return f"-ERR unknown command '{' '.join(message)}'{SEPARATOR}"
