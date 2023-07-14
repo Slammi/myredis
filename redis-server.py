@@ -5,20 +5,18 @@ import argparse
 import threading
 import time
 
-from utils import server_response_decode
+from utils import server_response_decode, SEPARATOR, BULK_STR_START
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 6380  # Port to listen on (non-privileged ports are > 1023)
 DATA_DICT = {}  # Dictionary for storage of data on "Redis" server
 TIME_DICT = {}  # Dictionary for storing key and time (value) for SET time based options
 BUFFER_SIZE = 1024
-SEPARATOR = "\r\n"
-BULK_STR_START = "$"
-NIL_REPLY = "$-1\r\n"
-SYNTAX_ERROR_MSG = "-ERR syntax error\r\n"
+NIL_REPLY = "$-1" + SEPARATOR
+SYNTAX_ERROR_MSG = "-ERR syntax error" + SEPARATOR
 TIME_OPTIONS = set(["EX", "PX", "EXAT", "PXAT", "KEEPTTL"])
 SET_OPTIONS = set(["EX", "PX", "EXAT", "PXAT", "KEEPTTL", "XX", "NX", "GET"])
-OKAY = "+OK\r\n"
+OKAY = "+OK" + SEPARATOR
 
 
 def parse_args():
@@ -48,7 +46,7 @@ def listen_and_respond():
                 break
             decoded_response, _ = server_response_decode(data)
             # parse command and either retrieve/store data or return error message
-            RESP_encoded_response = command_handler(decoded_response, DATA_DICT)
+            RESP_encoded_response = command_handler(decoded_response)
             conn.sendall(f"{RESP_encoded_response}".encode())
     return data
 
@@ -61,33 +59,34 @@ def bulk_string_response(length, response):
     return f"{BULK_STR_START}{length}{SEPARATOR}{response}{SEPARATOR}"
 
 
-def command_handler(message, data_dictionary):
+def command_handler(message):
     # generates bulk string, simple string, null reply and integer reply.
     if type(message) != list:
         return unknown_command_error_response(message)
     if message[0] == "GET":
-        if len(message) > 2:
-            return unknown_command_error_response(message[2:])
-        if message[1] not in data_dictionary:
+        if len(message) != 2:
+            return unknown_command_error_response(message)
+        if message[1] not in DATA_DICT:
             return NIL_REPLY
-        value_len = len(data_dictionary[message[1]])
-        return bulk_string_response(value_len, data_dictionary[message[1]])
+        value_len = len(DATA_DICT[message[1]])
+        return bulk_string_response(value_len, DATA_DICT[message[1]])
     if message[0] == "DEL":
         count = 0
         for part in message[1:]:
-            if part in data_dictionary:
-                del data_dictionary[part]
+            if part in DATA_DICT:
+                del DATA_DICT[part]
                 count += 1
         return f":{count}{SEPARATOR}"
     if message[0] == "SET":
         if len(message) >= 4:
-            # (TODO: COMMANDS AFTER SET OPTIONS WILL NOT THROW ERRORS EVEN IF THEY ARE GARBAGE. WILL NEED TO IMPLEMENT 
+            set_options = message[3:]
+            # (TODO: COMMANDS AFTER SET OPTIONS WILL NOT THROW ERRORS EVEN IF THEY ARE GARBAGE. WILL NEED TO IMPLEMENT
             # POSITIONAL/INDEX BASED PARSING IN FUTURE TO ADDRESS THIS ISSUE)
             # Immediate exit for syntax errors with options that don't work together
             # (MAY WANT TO ADD MORE SPECIFIC ERROR MESSAGES IN FUTURE)
-            if "NX" in message[3:] and "XX" in message[3:]:
+            if "NX" in set_options and "XX" in set_options:
                 return SYNTAX_ERROR_MSG
-            if len(set(message[3:]).intersection(TIME_OPTIONS)) > 1:
+            if len(set(set_options).intersection(TIME_OPTIONS)) > 1:
                 return SYNTAX_ERROR_MSG
 
             # check first for XX and NX conditions are met for set operation;
@@ -95,43 +94,51 @@ def command_handler(message, data_dictionary):
             # (ALSO NEED TO IMPLEMENT FUTHER NESTED IF STATEMENTS FOR TIME OPTIONS)
 
             # XX only sets if key already exists; returns nil reply if set not performed
-            if "XX" in message[3:]:
+            if "XX" in set_options:
                 # GET command returns pervious value if key exists or nil reply if key doesn't exist
-                if "GET" in message[3:]:
-                    if message[1] in data_dictionary:
-                        old_value_len = len(data_dictionary[message[1]])
-                        old_value = data_dictionary[message[1]]
+                if "GET" in set_options:
+                    if message[1] in DATA_DICT:
+                        old_value_len = len(DATA_DICT[message[1]])
+                        old_value = DATA_DICT[message[1]]
                         old_value_bulk_string = bulk_string_response(
                             old_value_len, old_value
                         )
-                        data_dictionary.update({message[1]: message[2]})
+                        DATA_DICT.update({message[1]: message[2]})
                         return old_value_bulk_string
 
                     return NIL_REPLY
-                if message[1] in data_dictionary:
-                    data_dictionary.update({message[1]: message[2]})
+                if message[1] in DATA_DICT:
+                    DATA_DICT.update({message[1]: message[2]})
                     return OKAY
                 return NIL_REPLY
             # NX only sets if key does not exist; returns nil reply if set not performed
-            if "NX" in message[3:]:
-                if "GET" in message[3:]:
+            if "NX" in set_options:
+                if "GET" in set_options:
                     # returns current value but does not set new value as key already existed; Get overides nil reply from NX
-                    if message[1] in data_dictionary:
-                        current_value_len = len(data_dictionary[message[1]])
-                        current_value = data_dictionary[message[1]]
+                    if message[1] in DATA_DICT:
+                        current_value_len = len(DATA_DICT[message[1]])
+                        current_value = DATA_DICT[message[1]]
                         current_value_bulk_string = bulk_string_response(
                             current_value_len, current_value
                         )
                         return current_value_bulk_string
                     # sets new key:value but returns nil as GET was used and no key:value existed previously
-                    if message[1] not in data_dictionary:
-                        data_dictionary[message[1]] = message[2]
+                    if message[1] not in DATA_DICT:
+                        DATA_DICT[message[1]] = message[2]
                         return NIL_REPLY
+            if "GET" in set_options:
+                # returns current value but does not set new value as key already existed; Get overides nil reply from NX
+                if message[1] in DATA_DICT:
+                    current_value_len = len(DATA_DICT[message[1]])
+                    current_value = DATA_DICT[message[1]]
+                    current_value_bulk_string = bulk_string_response(
+                        current_value_len, current_value
+                    )
+                    DATA_DICT.update({message[1]: message[2]})
+                    return current_value_bulk_string
+                return NIL_REPLY
         elif len(message) == 3:
-            if message[1] in data_dictionary:
-                data_dictionary.update({message[1]: message[2]})
-                return OKAY
-            data_dictionary[message[1]] = message[2]
+            DATA_DICT[message[1]] = message[2]
             return OKAY
     return unknown_command_error_response(message)
 
