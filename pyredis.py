@@ -2,14 +2,12 @@ import argparse
 import socket
 
 
-from utils import server_response_decode
+from utils import server_response_decode, SEPARATOR, BULK_STR_START
 
 HOST = "127.0.0.1"  # Local host IP
 PORT = 6380  # Current port used by the server
 BUFFER_SIZE = 1024
 ARRAY_START = "*"
-SEPARATOR = "\r\n"
-BULK_STR_START = "$"
 
 
 def main():
