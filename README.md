@@ -1,6 +1,6 @@
 # My Redis
 This is a coding project created by me to demonstrate fundamental understanding of software engineering, source control, and the submission/review process involved with working in a collaborative programming environment.
-The goal of this project is to answer the following tech chanllenge prompt:
+The goal of this project is to answer the following tech challenge prompt:
 
 
 **Overview:**
@@ -41,4 +41,4 @@ Unsupported commands receive a response indicating they are not supported
 Resources:
 Redis Wire Protocol reference - https://redis.io/topics/protocol
 
-This project was written in Python and runs locally in its current form. GET, DEL, and SET commands operate as intended with most options functional. Future addtions will include time locking options included with SET commands.
+This project was written in Python and runs locally in its current form. GET, DEL, and SET commands operate as intended with most options functional. Future additions will include time locking options included with SET commands.
