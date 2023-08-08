@@ -15,7 +15,7 @@ BUFFER_SIZE = 1024
 NIL_REPLY = "$-1" + SEPARATOR
 SYNTAX_ERROR_MSG = "-ERR syntax error" + SEPARATOR
 TIME_OPTIONS = set(["EX", "PX", "EXAT", "PXAT", "KEEPTTL"])
-SET_OPTIONS = set(TIME_OPTIONS + ["XX", "NX", "GET"])
+# SET_OPTIONS = set(TIME_OPTIONS + ["XX", "NX", "GET"])
 OKAY = "+OK" + SEPARATOR
 
 
@@ -33,6 +33,8 @@ def parse_args():
 
 def listen_and_respond():
     args = parse_args()
+    timeout_thread = threading.Thread(target=timeout_loop, name="timeout_thread")
+    timeout_thread.start()
     with socket.socket() as s:
         s.bind((HOST, args.port))
         s.listen()
@@ -88,7 +90,21 @@ def command_handler(message):
                 return SYNTAX_ERROR_MSG
             if len(set(set_options).intersection(TIME_OPTIONS)) > 1:
                 return SYNTAX_ERROR_MSG
-
+            # All entries into TIME_DICT will be in milliseconds. EX inputs from client are converted into milliseconds
+            # before they are stored in variable time_request. PX inputs are already in milliseconds.
+            time_request = -1
+            if "EX" in set_options:
+                time_request = int(set_options[set_options.index("EX") + 1]) * 1000
+            if "PX" in set_options:
+                time_request = int(set_options[set_options.index("PX") + 1])
+            # time.time will provide answers in seconds as floats with fractional seconds.
+            # As seconds are only needed int cast will drop decimals. *1000 is used for conversion to milliseconds where needed.
+            if "EXAT" in set_options:
+                end_time = int(set_options[set_options.index("EXAT") + 1])
+                time_request = (end_time - int(time.time())) * 1000
+            if "PXAT" in set_options:
+                end_time = int(set_options[set_options.index("PXAT") + 1])
+                time_request = end_time - int(time.time() * 1000)
             # check first for XX and NX conditions are met for set operation;
             # then check for other options
             # (ALSO NEED TO IMPLEMENT FUTHER NESTED IF STATEMENTS FOR TIME OPTIONS)
@@ -104,17 +120,27 @@ def command_handler(message):
                             old_value_len, old_value
                         )
                         DATA_DICT.update({message[1]: message[2]})
+                        # check for existing time to live previously set; delete current TTL unless specified to keep.
+                        if message[1] in TIME_DICT:
+                            if "KEEPTTL" not in set_options:
+                                del TIME_DICT[message[1]]
+                        if time_request >= 0:
+                            TIME_DICT.update({message[1]: time_request})
                         return old_value_bulk_string
-
                     return NIL_REPLY
                 if message[1] in DATA_DICT:
                     DATA_DICT.update({message[1]: message[2]})
+                    if message[1] in TIME_DICT:
+                        if "KEEPTTL" not in set_options:
+                            del TIME_DICT[message[1]]
+                    if time_request >= 0:
+                        TIME_DICT.update({message[1]: time_request})
                     return OKAY
                 return NIL_REPLY
             # NX only sets if key does not exist; returns nil reply if set not performed
             if "NX" in set_options:
                 if "GET" in set_options:
-                    # returns current value but does not set new value as key already existed; Get overides nil reply from NX
+                    # returns current value but does not set new value as key already existed; GET overides nil reply from NX
                     if message[1] in DATA_DICT:
                         current_value_len = len(DATA_DICT[message[1]])
                         current_value = DATA_DICT[message[1]]
@@ -125,7 +151,21 @@ def command_handler(message):
                     # sets new key:value but returns nil as GET was used and no key:value existed previously
                     if message[1] not in DATA_DICT:
                         DATA_DICT[message[1]] = message[2]
+                        if message[1] in TIME_DICT:
+                            if "KEEPTTL" not in set_options:
+                                del TIME_DICT[message[1]]
+                        if time_request >= 0:
+                            TIME_DICT[message[1]] = time_request
                         return NIL_REPLY
+                if message[1] not in DATA_DICT:
+                    DATA_DICT[message[1]] = message[2]
+                    if message[1] in TIME_DICT:
+                        if "KEEPTTL" not in set_options:
+                            del TIME_DICT[message[1]]
+                    if time_request >= 0:
+                        TIME_DICT[message[1]] = time_request
+                    return OKAY
+                return NIL_REPLY
             if "GET" in set_options:
                 # returns current value but does not set new value as key already existed; Get overides nil reply from NX
                 if message[1] in DATA_DICT:
@@ -135,8 +175,29 @@ def command_handler(message):
                         current_value_len, current_value
                     )
                     DATA_DICT.update({message[1]: message[2]})
+                    if message[1] in TIME_DICT:
+                        if "KEEPTTL" not in set_options:
+                            del TIME_DICT[message[1]]
+                    if time_request >= 0:
+                        TIME_DICT.update({message[1]: time_request})
                     return current_value_bulk_string
                 return NIL_REPLY
+            if message[1] in DATA_DICT:
+                DATA_DICT.update({message[1]: message[2]})
+                if message[1] in TIME_DICT:
+                    if "KEEPTTL" not in set_options:
+                        del TIME_DICT[message[1]]
+                if time_request >= 0:
+                    TIME_DICT.update({message[1]: time_request})
+                return OKAY
+            if message[1] not in DATA_DICT:
+                DATA_DICT[message[1]] = message[2]
+                if message[1] in TIME_DICT:
+                    if "KEEPTTL" not in set_options:
+                        del TIME_DICT[message[1]]
+                if time_request >= 0:
+                    TIME_DICT[message[1]] = time_request
+                return OKAY
         elif len(message) == 3:
             DATA_DICT[message[1]] = message[2]
             return OKAY
@@ -144,12 +205,24 @@ def command_handler(message):
 
 
 def timeout_loop():
+    # This loop takes the key value pair provided from SET options and stores time in milliseconds
+    # Loop will run every millisecond and subtract 1 from value corresponding to specified key.
+    # Once value has reached 0, key is popped from both dictionaries.
     while True:
+        delete_list = []
         for key, value in TIME_DICT.items():
             TIME_DICT[key] -= 1
             if value <= 0:
-                DATA_DICT.pop(key)
-                TIME_DICT.pop(key)
+                delete_list.append(key)
+        for key in delete_list:
+            try:
+                del DATA_DICT[key]
+            except KeyError as e:
+                print(e)
+            try:
+                del TIME_DICT[key]
+            except KeyError as e:
+                print(e)
         time.sleep(0.001)
 
 
