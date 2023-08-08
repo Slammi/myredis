@@ -119,22 +119,14 @@ def command_handler(message):
                         old_value_bulk_string = bulk_string_response(
                             old_value_len, old_value
                         )
-                        DATA_DICT.update({message[1]: message[2]})
+                        DATA_DICT[message[1]] = message[2]
                         # check for existing time to live previously set; delete current TTL unless specified to keep.
-                        if message[1] in TIME_DICT:
-                            if "KEEPTTL" not in set_options:
-                                del TIME_DICT[message[1]]
-                        if time_request >= 0:
-                            TIME_DICT.update({message[1]: time_request})
+                        time_dictionary_check(message[1], set_options, time_request)
                         return old_value_bulk_string
                     return NIL_REPLY
                 if message[1] in DATA_DICT:
-                    DATA_DICT.update({message[1]: message[2]})
-                    if message[1] in TIME_DICT:
-                        if "KEEPTTL" not in set_options:
-                            del TIME_DICT[message[1]]
-                    if time_request >= 0:
-                        TIME_DICT.update({message[1]: time_request})
+                    DATA_DICT[message[1]] = message[2]
+                    time_dictionary_check(message[1], set_options, time_request)
                     return OKAY
                 return NIL_REPLY
             # NX only sets if key does not exist; returns nil reply if set not performed
@@ -174,34 +166,25 @@ def command_handler(message):
                     current_value_bulk_string = bulk_string_response(
                         current_value_len, current_value
                     )
-                    DATA_DICT.update({message[1]: message[2]})
-                    if message[1] in TIME_DICT:
-                        if "KEEPTTL" not in set_options:
-                            del TIME_DICT[message[1]]
-                    if time_request >= 0:
-                        TIME_DICT.update({message[1]: time_request})
+                    DATA_DICT[message[1]] = message[2]
+                    time_dictionary_check(message[1], set_options, time_request)
                     return current_value_bulk_string
                 return NIL_REPLY
-            if message[1] in DATA_DICT:
-                DATA_DICT.update({message[1]: message[2]})
-                if message[1] in TIME_DICT:
-                    if "KEEPTTL" not in set_options:
-                        del TIME_DICT[message[1]]
-                if time_request >= 0:
-                    TIME_DICT.update({message[1]: time_request})
-                return OKAY
-            if message[1] not in DATA_DICT:
-                DATA_DICT[message[1]] = message[2]
-                if message[1] in TIME_DICT:
-                    if "KEEPTTL" not in set_options:
-                        del TIME_DICT[message[1]]
-                if time_request >= 0:
-                    TIME_DICT[message[1]] = time_request
-                return OKAY
+            DATA_DICT[message[1]] = message[2]
+            time_dictionary_check(message[1], set_options, time_request)
+            return OKAY
         elif len(message) == 3:
             DATA_DICT[message[1]] = message[2]
             return OKAY
     return unknown_command_error_response(message)
+
+
+def time_dictionary_check(key, set_options, time_request):
+    if key in TIME_DICT:
+        if "KEEPTTL" not in set_options:
+            del TIME_DICT[key]
+    if time_request >= 0:
+        TIME_DICT[key] = time_request
 
 
 def timeout_loop():
