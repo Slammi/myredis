@@ -143,19 +143,11 @@ def command_handler(message):
                     # sets new key:value but returns nil as GET was used and no key:value existed previously
                     if message[1] not in DATA_DICT:
                         DATA_DICT[message[1]] = message[2]
-                        if message[1] in TIME_DICT:
-                            if "KEEPTTL" not in set_options:
-                                del TIME_DICT[message[1]]
-                        if time_request >= 0:
-                            TIME_DICT[message[1]] = time_request
+                        time_dictionary_check(message[1], set_options, time_request)
                         return NIL_REPLY
                 if message[1] not in DATA_DICT:
                     DATA_DICT[message[1]] = message[2]
-                    if message[1] in TIME_DICT:
-                        if "KEEPTTL" not in set_options:
-                            del TIME_DICT[message[1]]
-                    if time_request >= 0:
-                        TIME_DICT[message[1]] = time_request
+                    time_dictionary_check(message[1], set_options, time_request)
                     return OKAY
                 return NIL_REPLY
             if "GET" in set_options:
