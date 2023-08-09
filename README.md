@@ -1,5 +1,5 @@
 # My Redis
-This is a coding project created by me to demonstrate fundamental understanding of software engineering, source control, and the submission/review process involved with working in a collaborative programming environment.
+This is a coding project to demonstrate fundamental understanding of software engineering, source control, and the submission/review process involved with working in a collaborative programming environment.
 The goal of this project is to answer the following tech challenge prompt:
 
 
