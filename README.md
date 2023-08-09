@@ -10,7 +10,8 @@ In a language of your choice, using only its stdlib, create an in-memory key-val
 
  
 
-Success Metrics
+Success Metrics:
+
 While running your solution, the following commands respond as such:
 
 $ start solution
