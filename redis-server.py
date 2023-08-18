@@ -93,9 +93,9 @@ def command_handler(message):
         DATA_DICT_LOCK.release()
         return f":{count}{SEPARATOR}"
     if command == "SET":
-        command_value = message[2]
         if len(message) <= 2:
             return unknown_command_error_response(message)
+        command_value = message[2]
         if len(message) == 3:
             set_value(command_key, command_value)
             return OKAY
@@ -153,15 +153,11 @@ def command_handler(message):
             if "GET" in set_options:
                 # returns current value but does not set new value as key already existed; GET overides nil reply from NX
                 if key_exists:
-                    current_value_bulk_string = bulk_string_response(
-                        current_value_len, current_value
-                    )
-                    return current_value_bulk_string
+                    return bulk_string_response(current_value_len, current_value)
                 # sets new key:value but returns nil as GET was used and no key:value existed previously
-                else:
-                    set_value(command_key, command_value)
-                    time_dictionary_check(command_key, set_options, time_request)
-                    return NIL_REPLY
+                set_value(command_key, command_value)
+                time_dictionary_check(command_key, set_options, time_request)
+                return NIL_REPLY
             if not key_exists:
                 set_value(command_key, command_value)
                 time_dictionary_check(command_key, set_options, time_request)
@@ -170,12 +166,9 @@ def command_handler(message):
         if "GET" in set_options:
             # returns current value but does not set new value as key already existed; Get overides nil reply from NX
             if key_exists:
-                current_value_bulk_string = bulk_string_response(
-                    current_value_len, current_value
-                )
                 set_value(command_key, command_value)
                 time_dictionary_check(command_key, set_options, time_request)
-                return current_value_bulk_string
+                return bulk_string_response(current_value_len, current_value)
             return NIL_REPLY
         set_value(command_key, command_value)
         time_dictionary_check(command_key, set_options, time_request)
