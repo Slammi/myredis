@@ -42,4 +42,4 @@ Unsupported commands receive a response indicating they are not supported
 Resources:
 Redis Wire Protocol reference - https://redis.io/topics/protocol
 
-This project was written in Python and runs locally in its current form. GET, DEL, and SET commands operate as intended all options functional.
+This project was written in Python and runs locally in its current form. GET, DEL, and SET commands operate as intended with all options functional.
